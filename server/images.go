@@ -347,7 +347,7 @@ func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands
 				switch {
 				case errors.Is(err, os.ErrNotExist):
 					fn(api.ProgressResponse{Status: "pulling model"})
-					if err := PullModel(ctx, c.Args, &registryOptions{}, fn); err != nil {
+					if err := PullModel(ctx, c.Args, quant, &registryOptions{}, fn); err != nil {
 						return err
 					}
 
