@@ -425,11 +425,6 @@ func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands
 
 				bin.Seek(offset, io.SeekStart)
 
-				if quant != "" {
-					// requantize the model
-					panic("TODO")
-				}
-
 				ggml, err := llm.DecodeGGML(bin)
 				if err != nil {
 					switch {
@@ -440,6 +435,13 @@ func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands
 					default:
 						return err
 					}
+				}
+
+				if quant != "" {
+					if ggml.FileType() != "F16" {
+						return fmt.Errorf("FROM model (type %q) does not support requantization. It must be FP_16", ggml.FileType())
+					}
+					panic("TODO")
 				}
 
 				config.SetModelFormat(ggml.Name())
