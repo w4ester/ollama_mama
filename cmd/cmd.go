@@ -344,7 +344,8 @@ func PushHandler(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	request := api.PushRequest{Name: args[0], Insecure: insecure}
+	quant, _ := cmd.Flags().GetString("q")
+	request := api.PushRequest{Name: args[0], Insecure: insecure, QuantizationLevel: quant}
 	if err := client.Push(cmd.Context(), &request, fn); err != nil {
 		return err
 	}
@@ -540,7 +541,8 @@ func PullHandler(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	request := api.PullRequest{Name: args[0], Insecure: insecure}
+	quant, _ := cmd.Flags().GetString("q")
+	request := api.PullRequest{Name: args[0], Insecure: insecure, QuantizationLevel: quant}
 	if err := client.Pull(cmd.Context(), &request, fn); err != nil {
 		return err
 	}
@@ -991,6 +993,7 @@ Environment Variables:
 	}
 
 	pullCmd.Flags().Bool("insecure", false, "Use an insecure registry")
+	pullCmd.Flags().StringP("q", "q", "", "Quantization level")
 
 	pushCmd := &cobra.Command{
 		Use:     "push MODEL",
@@ -1001,6 +1004,7 @@ Environment Variables:
 	}
 
 	pushCmd.Flags().Bool("insecure", false, "Use an insecure registry")
+	pushCmd.Flags().StringP("q", "q", "", "Quantization level")
 
 	listCmd := &cobra.Command{
 		Use:     "list",
