@@ -946,7 +946,7 @@ PARAMETER {{ $k }} {{ printf "%#v" $parameter }}
 	return buf.String(), nil
 }
 
-func PushModel(ctx context.Context, name string, regOpts *registryOptions, fn func(api.ProgressResponse)) error {
+func PushModel(ctx context.Context, name, quantization string, regOpts *registryOptions, fn func(api.ProgressResponse)) error {
 	mp := ParseModelPath(name)
 	fn(api.ProgressResponse{Status: "retrieving manifest"})
 
@@ -954,8 +954,7 @@ func PushModel(ctx context.Context, name string, regOpts *registryOptions, fn fu
 		return fmt.Errorf("insecure protocol http")
 	}
 
-	const quantTODO = ""
-	manifest, _, err := GetManifest(mp, quantTODO)
+	manifest, sha256sum, err := GetManifest(mp, quantization)
 	if err != nil {
 		fn(api.ProgressResponse{Status: "couldn't retrieve manifest"})
 		return err
@@ -992,12 +991,49 @@ func PushModel(ctx context.Context, name string, regOpts *registryOptions, fn fu
 	}
 	defer resp.Body.Close()
 
+	configPath, err := GetBlobsPath(manifest.Config.Digest)
+	if err != nil {
+		return fmt.Errorf("path: %w", err)
+	}
+
+	configFile, err := os.Open(configPath)
+	if err != nil {
+		return fmt.Errorf("open: %w", err)
+	}
+	defer configFile.Close()
+
+	var config ConfigV2
+	if err := json.NewDecoder(configFile).Decode(&config); err != nil {
+		return err
+	}
+
+	var b bytes.Buffer
+	if err := json.NewEncoder(&b).Encode(map[string]string{
+		"quantization": config.FileType,
+		"digest":       fmt.Sprintf("sha256:%s", sha256sum),
+	}); err != nil {
+		return err
+	}
+
+	baseURL := url.URL{
+		Scheme: mp.ProtocolScheme,
+		Host:   "localhost:8080",
+	}
+
+	requestURL = baseURL.JoinPath("api", "namespaces", mp.Namespace, mp.Repository, mp.Tag)
+	slog.Info("requestURL", "requestURL", requestURL.String())
+	response, err := makeRequestWithRetry(ctx, http.MethodPost, requestURL, nil, bytes.NewReader(b.Bytes()), regOpts)
+	if err != nil {
+		return fmt.Errorf("request: %w", err)
+	}
+	defer response.Body.Close()
+
 	fn(api.ProgressResponse{Status: "success"})
 
 	return nil
 }
 
-func PullModel(ctx context.Context, name string, regOpts *registryOptions, fn func(api.ProgressResponse)) error {
+func PullModel(ctx context.Context, name, quantization string, regOpts *registryOptions, fn func(api.ProgressResponse)) error {
 	mp := ParseModelPath(name)
 
 	var manifest *ManifestV2
@@ -1028,7 +1064,7 @@ func PullModel(ctx context.Context, name string, regOpts *registryOptions, fn fu
 
 	fn(api.ProgressResponse{Status: "pulling manifest"})
 
-	manifest, err = pullModelManifest(ctx, mp, regOpts)
+	manifest, err = pullModelManifest(ctx, mp, quantization, regOpts)
 	if err != nil {
 		return fmt.Errorf("pull model manifest: %s", err)
 	}
@@ -1104,16 +1140,30 @@ func PullModel(ctx context.Context, name string, regOpts *registryOptions, fn fu
 	return nil
 }
 
-func pullModelManifest(ctx context.Context, mp ModelPath, regOpts *registryOptions) (*ManifestV2, error) {
-	// get "manifest" list
-	// ...
+func pullModelManifest(ctx context.Context, mp ModelPath, quantization string, regOpts *registryOptions) (*ManifestV2, error) {
+	baseURL := url.URL{
+		Scheme: mp.ProtocolScheme,
+		Host:   "localhost:8080",
+	}
 
-	// get the manifest (from Docker)
-	requestURL := mp.BaseURL().JoinPath("v2", mp.GetNamespaceRepository(), "manifests")
+	requestURL := baseURL.JoinPath("api", "namespaces", mp.Namespace, mp.Repository, mp.Tag)
+	resp, err := makeRequestWithRetry(ctx, http.MethodGet, requestURL, nil, nil, regOpts)
+	if err == nil {
+		var quants map[string]string
+		if err := json.NewDecoder(resp.Body).Decode(&quants); err != nil {
+			return nil, err
+		}
+
+		if digest, ok := quants[quantization]; ok {
+			mp.Tag = digest
+		}
+	}
+
+	requestURL = mp.BaseURL().JoinPath("v2", mp.GetNamespaceRepository(), "manifests", mp.Tag)
 
 	headers := make(http.Header)
 	headers.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
-	resp, err := makeRequestWithRetry(ctx, http.MethodGet, requestURL, headers, nil, regOpts)
+	resp, err = makeRequestWithRetry(ctx, http.MethodGet, requestURL, headers, nil, regOpts)
 	if err != nil {
 		return nil, err
 	}

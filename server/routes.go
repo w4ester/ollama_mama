@@ -522,7 +522,7 @@ func PullModelHandler(c *gin.Context) {
 		ctx, cancel := context.WithCancel(c.Request.Context())
 		defer cancel()
 
-		if err := PullModel(ctx, model, regOpts, fn); err != nil {
+		if err := PullModel(ctx, model, req.QuantizationLevel, regOpts, fn); err != nil {
 			ch <- gin.H{"error": err.Error()}
 		}
 	}()
@@ -571,7 +571,7 @@ func PushModelHandler(c *gin.Context) {
 		ctx, cancel := context.WithCancel(c.Request.Context())
 		defer cancel()
 
-		if err := PushModel(ctx, model, regOpts, fn); err != nil {
+		if err := PushModel(ctx, model, req.QuantizationLevel, regOpts, fn); err != nil {
 			ch <- gin.H{"error": err.Error()}
 		}
 	}()

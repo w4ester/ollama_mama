@@ -197,6 +197,8 @@ type PullRequest struct {
 	Password string `json:"password"`
 	Stream   *bool  `json:"stream,omitempty"`
 
+	QuantizationLevel string `json:"quantization_level"`
+
 	// Name is deprecated, see Model
 	Name string `json:"name"`
 }
@@ -214,6 +216,8 @@ type PushRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Stream   *bool  `json:"stream,omitempty"`
+
+	QuantizationLevel string `json:"quantization_level"`
 
 	// Name is deprecated, see Model
 	Name string `json:"name"`
