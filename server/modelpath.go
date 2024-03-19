@@ -1,12 +1,18 @@
 package server
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+)
+
+// Defaults
+const (
+	DefaultQuantization = "Q4_0"
 )
 
 type ModelPath struct {
@@ -113,13 +119,21 @@ func modelsDir() (string, error) {
 }
 
 // GetManifestPath returns the path to the manifest file for the given model path, it is up to the caller to create the directory if it does not exist.
-func (mp ModelPath) GetManifestPath() (string, error) {
+func (mp ModelPath) GetManifestPath(quant string) (string, error) {
 	dir, err := modelsDir()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(dir, "manifests", mp.Registry, mp.Namespace, mp.Repository, mp.Tag), nil
+	return filepath.Join(
+		dir,
+		"manifests",
+		mp.Registry,
+		mp.Namespace,
+		mp.Repository,
+		mp.Tag,
+		cmp.Or(quant, DefaultQuantization),
+	), nil
 }
 
 func (mp ModelPath) BaseURL() *url.URL {
@@ -129,7 +143,7 @@ func (mp ModelPath) BaseURL() *url.URL {
 	}
 }
 
-func GetManifestPath() (string, error) {
+func GetManifestBasePath() (string, error) {
 	dir, err := modelsDir()
 	if err != nil {
 		return "", err

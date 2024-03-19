@@ -45,6 +45,8 @@ func CreateHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	quant, _ := cmd.Flags().GetString("q")
+
 	client, err := api.ClientFromEnvironment()
 	if err != nil {
 		return err
@@ -194,7 +196,11 @@ func CreateHandler(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	request := api.CreateRequest{Name: args[0], Modelfile: string(modelfile)}
+	request := api.CreateRequest{
+		Name:              args[0],
+		Modelfile:         string(modelfile),
+		QuantizationLevel: quant,
+	}
 	if err := client.Create(cmd.Context(), &request, fn); err != nil {
 		return err
 	}
@@ -932,6 +938,7 @@ func NewCLI() *cobra.Command {
 	}
 
 	createCmd.Flags().StringP("file", "f", "Modelfile", "Name of the Modelfile (default \"Modelfile\")")
+	createCmd.Flags().StringP("q", "q", "", "Quantization level to requantize a fp16 model to (e.g. q4_0)")
 
 	showCmd := &cobra.Command{
 		Use:     "show MODEL",

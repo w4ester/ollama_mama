@@ -52,7 +52,7 @@ func Test_Routes(t *testing.T) {
 		fn := func(resp api.ProgressResponse) {
 			t.Logf("Status: %s", resp.Status)
 		}
-		err = CreateModel(context.TODO(), name, "", commands, fn)
+		err = CreateModel(context.TODO(), name, "", "", commands, fn)
 		assert.Nil(t, err)
 	}
 
@@ -137,7 +137,7 @@ func Test_Routes(t *testing.T) {
 				assert.Nil(t, err)
 				assert.Equal(t, resp.StatusCode, 200)
 
-				model, err := GetModel("t-bone")
+				model, err := GetModel("t-bone", "")
 				assert.Nil(t, err)
 				assert.Equal(t, "t-bone:latest", model.ShortName)
 			},
@@ -158,7 +158,7 @@ func Test_Routes(t *testing.T) {
 				req.Body = io.NopCloser(bytes.NewReader(jsonData))
 			},
 			Expected: func(t *testing.T, resp *http.Response) {
-				model, err := GetModel("beefsteak")
+				model, err := GetModel("beefsteak", "")
 				assert.Nil(t, err)
 				assert.Equal(t, "beefsteak:latest", model.ShortName)
 			},
@@ -209,8 +209,8 @@ func Test_Routes(t *testing.T) {
 
 	workDir, err := os.MkdirTemp("", "ollama-test")
 	assert.Nil(t, err)
-	defer os.RemoveAll(workDir)
-	os.Setenv("OLLAMA_MODELS", workDir)
+	// defer os.RemoveAll(workDir)
+	t.Setenv("OLLAMA_MODELS", workDir)
 
 	for _, tc := range testCases {
 		t.Logf("Running Test: [%s]", tc.Name)

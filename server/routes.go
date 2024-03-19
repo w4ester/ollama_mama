@@ -181,7 +181,8 @@ func GenerateHandler(c *gin.Context) {
 		}
 	}
 
-	model, err := GetModel(req.Model)
+	const quantTODO = ""
+	model, err := GetModel(req.Model, quantTODO)
 	if err != nil {
 		var pErr *fs.PathError
 		if errors.As(err, &pErr) {
@@ -432,7 +433,8 @@ func EmbeddingsHandler(c *gin.Context) {
 		return
 	}
 
-	model, err := GetModel(req.Model)
+	const quantTODO = ""
+	model, err := GetModel(req.Model, quantTODO)
 	if err != nil {
 		var pErr *fs.PathError
 		if errors.As(err, &pErr) {
@@ -642,7 +644,7 @@ func CreateModelHandler(c *gin.Context) {
 		ctx, cancel := context.WithCancel(c.Request.Context())
 		defer cancel()
 
-		if err := CreateModel(ctx, model, filepath.Dir(req.Path), commands, fn); err != nil {
+		if err := CreateModel(ctx, model, filepath.Dir(req.Path), req.QuantizationLevel, commands, fn); err != nil {
 			ch <- gin.H{"error": err.Error()}
 		}
 	}()
@@ -677,7 +679,8 @@ func DeleteModelHandler(c *gin.Context) {
 		return
 	}
 
-	if err := DeleteModel(model); err != nil {
+	quantTODO := ""
+	if err := DeleteModel(model, quantTODO); err != nil {
 		if os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("model '%s' not found", model)})
 		} else {
@@ -686,7 +689,7 @@ func DeleteModelHandler(c *gin.Context) {
 		return
 	}
 
-	manifestsPath, err := GetManifestPath()
+	manifestsPath, err := GetManifestBasePath()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -735,7 +738,8 @@ func ShowModelHandler(c *gin.Context) {
 }
 
 func GetModelInfo(req api.ShowRequest) (*api.ShowResponse, error) {
-	model, err := GetModel(req.Model)
+	const quantTODO = ""
+	model, err := GetModel(req.Model, quantTODO)
 	if err != nil {
 		return nil, err
 	}
@@ -802,14 +806,14 @@ func GetModelInfo(req api.ShowRequest) (*api.ShowResponse, error) {
 
 func ListModelsHandler(c *gin.Context) {
 	models := make([]api.ModelResponse, 0)
-	manifestsPath, err := GetManifestPath()
+	manifestsPath, err := GetManifestBasePath()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	modelResponse := func(modelName string) (api.ModelResponse, error) {
-		model, err := GetModel(modelName)
+	modelResponse := func(modelName, quant string) (api.ModelResponse, error) {
+		model, err := GetModel(modelName, quant)
 		if err != nil {
 			return api.ModelResponse{}, err
 		}
@@ -819,7 +823,7 @@ func ListModelsHandler(c *gin.Context) {
 			Family:            model.Config.ModelFamily,
 			Families:          model.Config.ModelFamilies,
 			ParameterSize:     model.Config.ModelType,
-			QuantizationLevel: model.Config.FileType,
+			QuantizationLevel: model.Config.FileType, // e.g. quant
 		}
 
 		return api.ModelResponse{
@@ -833,12 +837,15 @@ func ListModelsHandler(c *gin.Context) {
 
 	walkFunc := func(path string, info os.FileInfo, _ error) error {
 		if !info.IsDir() {
+			// strip quant
+			path, quant := filepath.Split(path)
+			path = strings.TrimSuffix(path, string(os.PathSeparator))
 			path, tag := filepath.Split(path)
 			model := strings.Trim(strings.TrimPrefix(path, manifestsPath), string(os.PathSeparator))
 			modelPath := strings.Join([]string{model, tag}, ":")
 			canonicalModelPath := strings.ReplaceAll(modelPath, string(os.PathSeparator), "/")
 
-			resp, err := modelResponse(canonicalModelPath)
+			resp, err := modelResponse(canonicalModelPath, quant)
 			if err != nil {
 				slog.Info(fmt.Sprintf("skipping file: %s", canonicalModelPath))
 				// nolint: nilerr
@@ -1102,7 +1109,7 @@ func Serve(ln net.Listener) error {
 			return err
 		}
 
-		manifestsPath, err := GetManifestPath()
+		manifestsPath, err := GetManifestBasePath()
 		if err != nil {
 			return err
 		}
@@ -1236,7 +1243,7 @@ func ChatHandler(c *gin.Context) {
 		return
 	}
 
-	model, err := GetModel(req.Model)
+	model, err := GetModel(req.Model, req.QuantizationLevel)
 	if err != nil {
 		var pErr *fs.PathError
 		if errors.As(err, &pErr) {

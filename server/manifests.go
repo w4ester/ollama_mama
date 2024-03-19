@@ -21,7 +21,7 @@ func WriteManifest(name string, config *Layer, layers []*Layer) error {
 	}
 
 	modelpath := ParseModelPath(name)
-	manifestPath, err := modelpath.GetManifestPath()
+	manifestPath, err := modelpath.GetManifestPath("")
 	if err != nil {
 		return err
 	}

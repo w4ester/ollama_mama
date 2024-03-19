@@ -128,8 +128,8 @@ func (m *ManifestV2) GetTotalSize() (total int64) {
 	return total
 }
 
-func GetManifest(mp ModelPath) (*ManifestV2, string, error) {
-	fp, err := mp.GetManifestPath()
+func GetManifest(mp ModelPath, quant string) (*ManifestV2, string, error) {
+	fp, err := mp.GetManifestPath(quant)
 	if err != nil {
 		return nil, "", err
 	}
@@ -155,9 +155,9 @@ func GetManifest(mp ModelPath) (*ManifestV2, string, error) {
 	return manifest, shaStr, nil
 }
 
-func GetModel(name string) (*Model, error) {
+func GetModel(name string, quant string) (*Model, error) {
 	mp := ParseModelPath(name)
-	manifest, digest, err := GetManifest(mp)
+	manifest, digest, err := GetManifest(mp, quant)
 	if err != nil {
 		return nil, err
 	}
@@ -283,9 +283,9 @@ func realpath(mfDir, from string) string {
 	return abspath
 }
 
-func CreateModel(ctx context.Context, name, modelFileDir string, commands []parser.Command, fn func(resp api.ProgressResponse)) error {
+func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands []parser.Command, fn func(resp api.ProgressResponse)) error {
 	deleteMap := make(map[string]struct{})
-	if manifest, _, err := GetManifest(ParseModelPath(name)); err == nil {
+	if manifest, _, err := GetManifest(ParseModelPath(name), quant); err == nil {
 		for _, layer := range append(manifest.Layers, manifest.Config) {
 			deleteMap[layer.Digest] = struct{}{}
 		}
@@ -343,7 +343,7 @@ func CreateModel(ctx context.Context, name, modelFileDir string, commands []pars
 			if err != nil {
 				// not a file on disk so must be a model reference
 				modelpath := ParseModelPath(c.Args)
-				manifest, _, err := GetManifest(modelpath)
+				manifest, _, err := GetManifest(modelpath, quant)
 				switch {
 				case errors.Is(err, os.ErrNotExist):
 					fn(api.ProgressResponse{Status: "pulling model"})
@@ -351,7 +351,7 @@ func CreateModel(ctx context.Context, name, modelFileDir string, commands []pars
 						return err
 					}
 
-					manifest, _, err = GetManifest(modelpath)
+					manifest, _, err = GetManifest(modelpath, quant)
 					if err != nil {
 						return err
 					}
@@ -424,6 +424,12 @@ func CreateModel(ctx context.Context, name, modelFileDir string, commands []pars
 				fn(api.ProgressResponse{Status: "creating model layer"})
 
 				bin.Seek(offset, io.SeekStart)
+
+				if quant != "" {
+					// requantize the model
+					panic("TODO")
+				}
+
 				ggml, err := llm.DecodeGGML(bin)
 				if err != nil {
 					switch {
@@ -690,13 +696,13 @@ func convertSafetensors(name, fn string) (string, error) {
 
 func CopyModel(src, dest string) error {
 	srcModelPath := ParseModelPath(src)
-	srcPath, err := srcModelPath.GetManifestPath()
+	srcPath, err := srcModelPath.GetManifestPath("")
 	if err != nil {
 		return err
 	}
 
 	destModelPath := ParseModelPath(dest)
-	destPath, err := destModelPath.GetManifestPath()
+	destPath, err := destModelPath.GetManifestPath("")
 	if err != nil {
 		return err
 	}
@@ -721,7 +727,7 @@ func CopyModel(src, dest string) error {
 }
 
 func deleteUnusedLayers(skipModelPath *ModelPath, deleteMap map[string]struct{}, dryRun bool) error {
-	fp, err := GetManifestPath()
+	fp, err := GetManifestBasePath()
 	if err != nil {
 		return err
 	}
@@ -731,6 +737,8 @@ func deleteUnusedLayers(skipModelPath *ModelPath, deleteMap map[string]struct{},
 			return nil
 		}
 
+		path, quant := filepath.Split(path)
+		path = strings.TrimSuffix(path, string(os.PathSeparator))
 		dir, file := filepath.Split(path)
 		dir = strings.Trim(strings.TrimPrefix(dir, fp), string(os.PathSeparator))
 		tag := strings.Join([]string{dir, file}, ":")
@@ -742,7 +750,7 @@ func deleteUnusedLayers(skipModelPath *ModelPath, deleteMap map[string]struct{},
 		}
 
 		// save (i.e. delete from the deleteMap) any files used in other manifests
-		manifest, _, err := GetManifest(fmp)
+		manifest, _, err := GetManifest(fmp, quant)
 		if err != nil {
 			// nolint: nilerr
 			return nil
@@ -846,9 +854,9 @@ func PruneDirectory(path string) error {
 	return nil
 }
 
-func DeleteModel(name string) error {
+func DeleteModel(name, quant string) error {
 	mp := ParseModelPath(name)
-	manifest, _, err := GetManifest(mp)
+	manifest, _, err := GetManifest(mp, quant)
 	if err != nil {
 		return err
 	}
@@ -864,7 +872,7 @@ func DeleteModel(name string) error {
 		return err
 	}
 
-	fp, err := mp.GetManifestPath()
+	fp, err := mp.GetManifestPath("")
 	if err != nil {
 		return err
 	}
@@ -946,7 +954,8 @@ func PushModel(ctx context.Context, name string, regOpts *registryOptions, fn fu
 		return fmt.Errorf("insecure protocol http")
 	}
 
-	manifest, _, err := GetManifest(mp)
+	const quantTODO = ""
+	manifest, _, err := GetManifest(mp, quantTODO)
 	if err != nil {
 		fn(api.ProgressResponse{Status: "couldn't retrieve manifest"})
 		return err
@@ -999,7 +1008,8 @@ func PullModel(ctx context.Context, name string, regOpts *registryOptions, fn fu
 	deleteMap := make(map[string]struct{})
 
 	if noprune = os.Getenv("OLLAMA_NOPRUNE"); noprune == "" {
-		manifest, _, err = GetManifest(mp)
+		const quantTODO = ""
+		manifest, _, err = GetManifest(mp, quantTODO)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
@@ -1067,7 +1077,7 @@ func PullModel(ctx context.Context, name string, regOpts *registryOptions, fn fu
 		return err
 	}
 
-	fp, err := mp.GetManifestPath()
+	fp, err := mp.GetManifestPath("")
 	if err != nil {
 		return err
 	}
@@ -1095,7 +1105,11 @@ func PullModel(ctx context.Context, name string, regOpts *registryOptions, fn fu
 }
 
 func pullModelManifest(ctx context.Context, mp ModelPath, regOpts *registryOptions) (*ManifestV2, error) {
-	requestURL := mp.BaseURL().JoinPath("v2", mp.GetNamespaceRepository(), "manifests", mp.Tag)
+	// get "manifest" list
+	// ...
+
+	// get the manifest (from Docker)
+	requestURL := mp.BaseURL().JoinPath("v2", mp.GetNamespaceRepository(), "manifests")
 
 	headers := make(http.Header)
 	headers.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")

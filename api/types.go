@@ -55,6 +55,8 @@ type ChatRequest struct {
 	Format    string    `json:"format"`
 	KeepAlive *Duration `json:"keep_alive,omitempty"`
 
+	QuantizationLevel string `json:"quantization_level"`
+
 	Options map[string]interface{} `json:"options"`
 }
 
@@ -143,6 +145,13 @@ type CreateRequest struct {
 	Path      string `json:"path"`
 	Modelfile string `json:"modelfile"`
 	Stream    *bool  `json:"stream,omitempty"`
+
+	// QuantizationLevel is the quantization level to convert Model to.
+	// to.
+	//
+	// It is an error to specify a quantization level if Model is not a
+	// fp16 model.
+	QuantizationLevel string `json:"quantization_level"`
 
 	// Name is deprecated, see Model
 	Name string `json:"name"`
