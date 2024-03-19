@@ -28,6 +28,7 @@ import (
 	"github.com/jmorganca/ollama/convert"
 	"github.com/jmorganca/ollama/llm"
 	"github.com/jmorganca/ollama/parser"
+	"github.com/jmorganca/ollama/quants"
 	"github.com/jmorganca/ollama/version"
 )
 
@@ -441,7 +442,25 @@ func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands
 					if ggml.FileType() != "F16" {
 						return fmt.Errorf("FROM model (type %q) does not support requantization. It must be FP_16", ggml.FileType())
 					}
-					panic("TODO")
+					workDir, err := GetBlobsPath("")
+					if err != nil {
+						return err
+					}
+
+					// // TODO(bmizerany): This is a
+					// hack to get to a quick POC. Will
+					// fix, but:
+					// NOTE: The outer pathName is being modified
+					pathName, err = quants.Convert(ctx, workDir, pathName, quant)
+					if err != nil {
+						return err
+					}
+					bin.Close()
+					bin, err = os.Open(pathName)
+					if err != nil {
+						return err
+					}
+					defer bin.Close()
 				}
 
 				config.SetModelFormat(ggml.Name())
