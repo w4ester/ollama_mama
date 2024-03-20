@@ -61,7 +61,6 @@ func Convert(ctx context.Context, workDir, in, level string) (out string, err er
 		out,
 		level,
 	)
-	println(cmd.String())
 	b, err := cmd.CombinedOutput()
 	if err != nil {
 		// TODO(bmizerany): temp hack; better error handling / messages
