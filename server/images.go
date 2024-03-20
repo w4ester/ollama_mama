@@ -344,7 +344,7 @@ func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands
 			if err != nil {
 				// not a file on disk so must be a model reference
 				modelpath := ParseModelPath(c.Args)
-				manifest, _, err := GetManifest(modelpath, quant)
+				manifest, _, err := GetManifest(modelpath, "F16")
 				switch {
 				case errors.Is(err, os.ErrNotExist):
 					fn(api.ProgressResponse{Status: "pulling model"})
@@ -461,6 +461,10 @@ func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands
 						return err
 					}
 					defer bin.Close()
+					ggml, err = llm.DecodeGGML(bin)
+					if err != nil {
+						return err
+					}
 				}
 
 				config.SetModelFormat(ggml.Name())
