@@ -53,8 +53,9 @@ func loadModel(cmd *cobra.Command, opts *runOptions) error {
 	}
 
 	chatReq := &api.ChatRequest{
-		Model:    opts.Model,
-		Messages: []api.Message{},
+		Model:             opts.Model,
+		Messages:          []api.Message{},
+		QuantizationLevel: opts.QuantizationLevel,
 	}
 	err = client.Chat(cmd.Context(), chatReq, func(resp api.ChatResponse) error {
 		p.StopAndClear()

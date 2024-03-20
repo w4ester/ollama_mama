@@ -269,6 +269,12 @@ func RunHandler(cmd *cobra.Command, args []string) error {
 	}
 	opts.Format = format
 
+	quant, err := cmd.Flags().GetString("q")
+	if err != nil {
+		return err
+	}
+	opts.QuantizationLevel = quant
+
 	prompts := args[1:]
 	// prepend stdin to the prompt if provided
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
@@ -553,17 +559,18 @@ func PullHandler(cmd *cobra.Command, args []string) error {
 type generateContextKey string
 
 type runOptions struct {
-	Model       string
-	ParentModel string
-	Prompt      string
-	Messages    []api.Message
-	WordWrap    bool
-	Format      string
-	System      string
-	Template    string
-	Images      []api.ImageData
-	Options     map[string]interface{}
-	MultiModal  bool
+	Model             string
+	ParentModel       string
+	Prompt            string
+	Messages          []api.Message
+	WordWrap          bool
+	Format            string
+	System            string
+	Template          string
+	Images            []api.ImageData
+	Options           map[string]interface{}
+	MultiModal        bool
+	QuantizationLevel string
 }
 
 type displayResponseState struct {
@@ -652,10 +659,11 @@ func chat(cmd *cobra.Command, opts runOptions) (*api.Message, error) {
 	}
 
 	req := &api.ChatRequest{
-		Model:    opts.Model,
-		Messages: opts.Messages,
-		Format:   opts.Format,
-		Options:  opts.Options,
+		Model:             opts.Model,
+		Messages:          opts.Messages,
+		Format:            opts.Format,
+		Options:           opts.Options,
+		QuantizationLevel: opts.QuantizationLevel,
 	}
 
 	if err := client.Chat(cancelCtx, req, fn); err != nil {
@@ -968,6 +976,8 @@ func NewCLI() *cobra.Command {
 	runCmd.Flags().Bool("insecure", false, "Use an insecure registry")
 	runCmd.Flags().Bool("nowordwrap", false, "Don't wrap words to the next line automatically")
 	runCmd.Flags().String("format", "", "Response format (e.g. json)")
+	runCmd.Flags().String("q", "q", "The quantization level to use")
+
 	serveCmd := &cobra.Command{
 		Use:     "serve",
 		Aliases: []string{"start"},
