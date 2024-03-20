@@ -447,10 +447,11 @@ func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands
 						return err
 					}
 
-					// // TODO(bmizerany): This is a
-					// hack to get to a quick POC. Will
-					// fix, but:
-					// NOTE: The outer pathName is being modified
+					// TODO(bmizerany): BEWARE: nasty hack:
+					// This overshadows the pathName,
+					// bin, and ggml variables so that
+					// the remaining code will create the
+					// model from the requantized file.
 					pathName, err = quants.Convert(ctx, workDir, pathName, quant)
 					if err != nil {
 						return err
