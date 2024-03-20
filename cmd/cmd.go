@@ -976,7 +976,7 @@ func NewCLI() *cobra.Command {
 	runCmd.Flags().Bool("insecure", false, "Use an insecure registry")
 	runCmd.Flags().Bool("nowordwrap", false, "Don't wrap words to the next line automatically")
 	runCmd.Flags().String("format", "", "Response format (e.g. json)")
-	runCmd.Flags().String("q", "q", "The quantization level to use")
+	runCmd.Flags().StringP("q", "q", "", "The quantization level to use")
 
 	serveCmd := &cobra.Command{
 		Use:     "serve",
