@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-func WriteManifest(name string, config *Layer, layers []*Layer) error {
+func WriteManifest(name, quant string, config *Layer, layers []*Layer) error {
 	manifest := ManifestV2{
 		SchemaVersion: 2,
 		MediaType:     "application/vnd.docker.distribution.manifest.v2+json",
@@ -21,7 +21,7 @@ func WriteManifest(name string, config *Layer, layers []*Layer) error {
 	}
 
 	modelpath := ParseModelPath(name)
-	manifestPath, err := modelpath.GetManifestPath("")
+	manifestPath, err := modelpath.GetManifestPath(quant)
 	if err != nil {
 		return err
 	}

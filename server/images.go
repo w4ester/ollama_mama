@@ -639,7 +639,7 @@ func CreateModel(ctx context.Context, name, modelFileDir, quant string, commands
 	}
 
 	fn(api.ProgressResponse{Status: "writing manifest"})
-	if err := WriteManifest(name, configLayer, layers.items); err != nil {
+	if err := WriteManifest(name, quant, configLayer, layers.items); err != nil {
 		return err
 	}
 
