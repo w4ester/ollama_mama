@@ -375,12 +375,21 @@ func ListHandler(cmd *cobra.Command, args []string) error {
 
 	for _, m := range models.Models {
 		if len(args) == 0 || strings.HasPrefix(m.Name, args[0]) {
-			data = append(data, []string{m.Name, m.Digest[:12], format.HumanBytes(m.Size), format.HumanTime(m.ModifiedAt, "Never")})
+			data = append(
+				data,
+				[]string{
+					m.Name,
+					m.Digest[:12],
+					m.Details.QuantizationLevel,
+					format.HumanBytes(m.Size),
+					format.HumanTime(m.ModifiedAt, "Never"),
+				},
+			)
 		}
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"NAME", "ID", "SIZE", "MODIFIED"})
+	table.SetHeader([]string{"NAME", "ID", "QUANTIZATION", "SIZE", "MODIFIED"})
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(false)
