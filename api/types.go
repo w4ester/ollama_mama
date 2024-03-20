@@ -173,6 +173,8 @@ type ShowRequest struct {
 
 	// Name is deprecated, see Model
 	Name string `json:"name"`
+
+	QuantizationLevel string `json:"quantization_level"`
 }
 
 type ShowResponse struct {

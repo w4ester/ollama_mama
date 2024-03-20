@@ -236,8 +236,17 @@ func RunHandler(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
+	quant, err := cmd.Flags().GetString("q")
+	if err != nil {
+		return err
+	}
+
 	// check if the model exists on the server
-	show, err := client.Show(cmd.Context(), &api.ShowRequest{Name: name})
+	show, err := client.Show(cmd.Context(), &api.ShowRequest{
+		Name:              name,
+		QuantizationLevel: quant,
+	})
+
 	var statusError api.StatusError
 	switch {
 	case errors.As(err, &statusError) && statusError.StatusCode == http.StatusNotFound:
@@ -256,11 +265,12 @@ func RunHandler(cmd *cobra.Command, args []string) error {
 	interactive := true
 
 	opts := runOptions{
-		Model:       args[0],
-		WordWrap:    os.Getenv("TERM") == "xterm-256color",
-		Options:     map[string]interface{}{},
-		MultiModal:  slices.Contains(show.Details.Families, "clip"),
-		ParentModel: show.Details.ParentModel,
+		Model:             args[0],
+		WordWrap:          os.Getenv("TERM") == "xterm-256color",
+		Options:           map[string]interface{}{},
+		MultiModal:        slices.Contains(show.Details.Families, "clip"),
+		ParentModel:       show.Details.ParentModel,
+		QuantizationLevel: quant,
 	}
 
 	format, err := cmd.Flags().GetString("format")
@@ -268,12 +278,6 @@ func RunHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	opts.Format = format
-
-	quant, err := cmd.Flags().GetString("q")
-	if err != nil {
-		return err
-	}
-	opts.QuantizationLevel = quant
 
 	prompts := args[1:]
 	// prepend stdin to the prompt if provided

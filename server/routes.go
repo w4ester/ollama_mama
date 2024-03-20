@@ -679,7 +679,7 @@ func DeleteModelHandler(c *gin.Context) {
 		return
 	}
 
-	quantTODO := ""
+	const quantTODO = ""
 	if err := DeleteModel(model, quantTODO); err != nil {
 		if os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("model '%s' not found", model)})
@@ -738,8 +738,7 @@ func ShowModelHandler(c *gin.Context) {
 }
 
 func GetModelInfo(req api.ShowRequest) (*api.ShowResponse, error) {
-	const quantTODO = ""
-	model, err := GetModel(req.Model, quantTODO)
+	model, err := GetModel(req.Model, req.QuantizationLevel)
 	if err != nil {
 		return nil, err
 	}
