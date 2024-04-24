@@ -8,5 +8,5 @@ import (
 
 func main() {
 	fmt.Println(llama.SystemInfo())
-	llama.Run("gemma-7b-it.gguf", "Hello, world!")
+	llama.Run("gemma.bin", "Hello, world!")
 }
