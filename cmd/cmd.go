@@ -77,39 +77,61 @@ func CreateHandler(cmd *cobra.Command, args []string) error {
 	p.Add(status, spinner)
 
 	for i := range modelfile.Commands {
-		switch modelfile.Commands[i].Name {
-		case "model", "adapter":
-			path := modelfile.Commands[i].Args
-			if path == "~" {
-				path = home
-			} else if strings.HasPrefix(path, "~/") {
-				path = filepath.Join(home, path[2:])
-			}
-
-			if !filepath.IsAbs(path) {
-				path = filepath.Join(filepath.Dir(filename), path)
-			}
-
-			fi, err := os.Stat(path)
-			if errors.Is(err, os.ErrNotExist) && modelfile.Commands[i].Name == "model" {
+		if slices.Contains([]string{"model", "adapter", "license", "template", "system"}, modelfile.Commands[i].Name) {
+			p := modelfile.Commands[i].Args
+			if p == "" {
 				continue
-			} else if err != nil {
-				return err
+			} else if p == "~" {
+				p = home
+			} else if strings.HasPrefix(p, "~/") {
+				p = filepath.Join(home, p[2:])
 			}
 
-			if fi.IsDir() {
-				// this is likely a safetensors or pytorch directory
-				// TODO make this work w/ adapters
-				tempfile, err := tempZipFiles(path)
+			if !filepath.IsAbs(p) {
+				p = filepath.Join(filepath.Dir(filename), p)
+			}
+
+			switch modelfile.Commands[i].Name {
+			case "model", "adapter":
+				fi, err := os.Stat(p)
+				if errors.Is(err, os.ErrNotExist) && modelfile.Commands[i].Name == "model" {
+					continue
+				} else if err != nil {
+					return err
+				}
+
+				if fi.IsDir() {
+					// this is likely a safetensors or pytorch directory
+					// TODO make this work w/ adapters
+					tempfile, err := tempZipFiles(p)
+					if err != nil {
+						return err
+					}
+					defer os.RemoveAll(tempfile)
+
+					p = tempfile
+				}
+			case "license", "template", "system":
+				ct, err := detectContentType(p)
+				if errors.Is(err, os.ErrNotExist) {
+					continue
+				} else if err != nil {
+					return err
+				} else if ct != "text/plain" {
+					return fmt.Errorf("invalid content type: expected text/plain for %s", p)
+				}
+
+				fi, err := os.Stat(p)
 				if err != nil {
 					return err
 				}
-				defer os.RemoveAll(tempfile)
 
-				path = tempfile
+				if fi.Size() > 1<<16 {
+					return fmt.Errorf("file is too large: %s", p)
+				}
 			}
 
-			digest, err := createBlob(cmd, client, path)
+			digest, err := createBlob(cmd, client, p)
 			if err != nil {
 				return err
 			}
@@ -152,6 +174,24 @@ func CreateHandler(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func detectContentType(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	var b bytes.Buffer
+	b.Grow(512)
+
+	if _, err := io.CopyN(&b, f, 512); err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+
+	contentType, _, _ := strings.Cut(http.DetectContentType(b.Bytes()), ";")
+	return contentType, nil
+}
+
 func tempZipFiles(path string) (string, error) {
 	tempfile, err := os.CreateTemp("", "ollama-tf")
 	if err != nil {
@@ -161,24 +201,6 @@ func tempZipFiles(path string) (string, error) {
 
 	zipfile := zip.NewWriter(tempfile)
 	defer zipfile.Close()
-
-	detectContentType := func(path string) (string, error) {
-		f, err := os.Open(path)
-		if err != nil {
-			return "", err
-		}
-		defer f.Close()
-
-		var b bytes.Buffer
-		b.Grow(512)
-
-		if _, err := io.CopyN(&b, f, 512); err != nil && !errors.Is(err, io.EOF) {
-			return "", err
-		}
-
-		contentType, _, _ := strings.Cut(http.DetectContentType(b.Bytes()), ";")
-		return contentType, nil
-	}
 
 	glob := func(pattern, contentType string) ([]string, error) {
 		matches, err := filepath.Glob(pattern)
