@@ -86,7 +86,7 @@ def get_summary(text):
   }
   payload_json = json.dumps(payload)
   headers = {"Content-Type": "application/json"}
-  response = requests.post(url, data=payload_json, headers=headers)
+  response = requests.post(url, data=payload_json, headers=headers, timeout=60)
 
   return json.loads(response.text)["response"]
 

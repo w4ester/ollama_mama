@@ -26,6 +26,6 @@ data = {
 }
 
 print(f"Generating a sample user")
-response = requests.post("http://localhost:11434/api/generate", json=data, stream=False)
+response = requests.post("http://localhost:11434/api/generate", json=data, stream=False, timeout=60)
 json_data = json.loads(response.text)
 print(json.dumps(json.loads(json_data["response"]), indent=2))

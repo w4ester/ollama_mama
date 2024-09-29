@@ -11,7 +11,7 @@ def generate(prompt, context):
                           'prompt': prompt,
                           'context': context,
                       },
-                      stream=True)
+                      stream=True, timeout=60)
     r.raise_for_status()
 
     for line in r.iter_lines():
