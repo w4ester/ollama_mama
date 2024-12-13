@@ -1,6 +1,6 @@
 import requests
 import json
-import random
+import secrets
 
 countries = [
     "United States",
@@ -11,7 +11,7 @@ countries = [
     "Canada",
     "France",
 ]
-country = random.choice(countries)
+country = secrets.choice(countries)
 model = "llama3"
 
 prompt = f"generate one realistically believable sample data set of a persons first name, last name, address in {country}, and phone number. Do not use common names. Respond using JSON. Key names should have no backslashes, values should use plain ascii with no special characters."
