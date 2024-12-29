@@ -72,7 +72,7 @@ if __name__ == "__main__":
       }
 
       # Send the POST request
-      response = requests.post(url, data=payload_json, headers=headers)
+      response = requests.post(url, data=payload_json, headers=headers, timeout=60)
 
       # Check the response
       if response.status_code == 200:

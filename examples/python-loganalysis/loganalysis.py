@@ -32,7 +32,7 @@ data = {
   "model": "mattw/loganalyzer"
 }
 
-response = requests.post("http://localhost:11434/api/generate", json=data, stream=True)
+response = requests.post("http://localhost:11434/api/generate", json=data, stream=True, timeout=60)
 for line in response.iter_lines():
   if line:
     json_data = json.loads(line)
